@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Моя Онлайн Игра</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
+        #controls { margin: 10px; }
+        #gameCanvas { border: 2px solid #333; background: #f0f0f0; }
+        #skinCanvas { border: 1px solid #ccc; margin-top: 10px; }
+        .color-btn { width: 20px; height: 20px; border: 1px solid #000; display: inline-block; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <input type="text" id="usernameInput" placeholder="Введите ваш никнейм" />
+        <button onclick="saveUsername()">Сохранить ник</button>
+        <p>Текущий игрок: <span id="currentPlayer">Гость</span></p>
+        <p>Используйте стрелки для движения</p>
+    </div>
+
+    <!-- Холст для самой игры -->
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+    <h3>Нарисуйте скин для вашего человечка (10x10 пикселей):</h3>
+    <!-- Холст для рисования скина -->
+    <canvas id="skinCanvas" width="100" height="100" style="image-rendering: pixelated;"></canvas>
+    <br>
+    <!-- Палитра цветов -->
+    <div id="palette">
+        <div class="color-btn" style="background:red;" onclick="selectColor('red')"></div>
+        <div class="color-btn" style="background:blue;" onclick="selectColor('blue')"></div>
+        <div class="color-btn" style="background:green;" onclick="selectColor('green')"></div>
+        <div class="color-btn" style="background:yellow;" onclick="selectColor('yellow')"></div>
+        <div class="color-btn" style="background:black;" onclick="selectColor('black')"></div>
+        <div class="color-btn" style="background:white;" onclick="selectColor('white')"></div>
+    </div>
+    <button onclick="clearSkin()">Очистить скин</button>
+    <button onclick="applySkin()">Применить скин к человечку</button>
+
+    <script>
+        // =================== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ===================
+        const gameCtx = document.getElementById('gameCanvas').getContext('2d');
+        const skinCtx = document.getElementById('skinCanvas').getContext('2d');
+        const skinSize = 10; // Скин будет 10x10 пикселей
+        let currentPlayer = { x: 400, y: 250, skin: [], username: 'Гость' };
+        let selectedColor = 'red';
+        let keys = {}; // Для управления с клавиатуры
+
+        // Инициализируем пустой скин (массив 10x10 с белым цветом)
+        function initSkin() {
+            currentPlayer.skin = [];
+            for (let y = 0; y < skinSize; y++) {
+                currentPlayer.skin[y] = [];
+                for (let x = 0; x < skinSize; x++) {
+                    currentPlayer.skin[y][x] = 'white';
+                }
+            }
+            drawSkinPreview();
+        }
+
+        // =================== РИСОВАНИЕ СКИНА ===================
+        // Обработка клика по холсту скина
+        skinCanvas.addEventListener('click', (e) => {
+            const rect = skinCanvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / (rect.width / skinSize));
+            const y = Math.floor((e.clientY - rect.top) / (rect.height / skinSize));
+            if (x >= 0 && x < skinSize && y >= 0 && y < skinSize) {
+                currentPlayer.skin[y][x] = selectedColor;
+                drawSkinPreview();
+            }
+        });
+
+        // Отображает скин на мини-холсте
+        function drawSkinPreview() {
+            const cellSize = 10; // 100px / 10 клеток = 10px
+            skinCtx.clearRect(0, 0, 100, 100);
+            for (let y = 0; y < skinSize; y++) {
+                for (let x = 0; x < skinSize; x++) {
+                    skinCtx.fillStyle = currentPlayer.skin[y][x];
+                    skinCtx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    skinCtx.strokeStyle = '#ddd';
+                    skinCtx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                }
+            }
+        }
+
+        // =================== УПРАВЛЕНИЕ ИГРОКОМ ===================
+        function drawPlayer() {
+            const size = 20; // Размер человечка на игровом поле
+            // Рисуем тело (квадрат)
+            gameCtx.fillStyle = 'gray';
+            gameCtx.fillRect(currentPlayer.x - size/2, currentPlayer.y - size/2, size, size);
+            // Накладываем скин поверх тела
+            const skinCell = size / skinSize;
+            for (let y = 0; y < skinSize; y++) {
+                for (let x = 0; x < skinSize; x++) {
+                    if (currentPlayer.skin[y][x] !== 'white') {
+                        gameCtx.fillStyle = currentPlayer.skin[y][x];
+                        gameCtx.fillRect(
+                            currentPlayer.x - size/2 + x * skinCell,
+                            currentPlayer.y - size/2 + y * skinCell,
+                            skinCell, skinCell
+                        );
+                    }
+                }
+            }
+            // Подписываем никнейм
+            gameCtx.fillStyle = 'black';
+            gameCtx.font = '12px Arial';
+            gameCtx.textAlign = 'center';
+            gameCtx.fillText(currentPlayer.username, currentPlayer.x, currentPlayer.y - 15);
+        }
+
+        function gameLoop() {
+            // Движение
+            if (keys['ArrowUp']) currentPlayer.y -= 3;
+            if (keys['ArrowDown']) currentPlayer.y += 3;
+            if (keys['ArrowLeft']) currentPlayer.x -= 3;
+            if (keys['ArrowRight']) currentPlayer.x += 3;
+            // Границы поля
+            currentPlayer.x = Math.max(10, Math.min(790, currentPlayer.x));
+            currentPlayer.y = Math.max(10, Math.min(490, currentPlayer.y));
+            // Отрисовка
+            gameCtx.clearRect(0, 0, 800, 500);
+            drawPlayer();
+            // Здесь позже будет отрисовка других игроков
+            requestAnimationFrame(gameLoop);
+        }
+
+        // =================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===================
+        function selectColor(color) { selectedColor = color; }
+        function clearSkin() { initSkin(); }
+        function applySkin() { console.log('Скин применен!', currentPlayer.skin); }
+        function saveUsername() {
+            const name = document.getElementById('usernameInput').value.trim();
+            if (name) {
+                currentPlayer.username = name;
+                document.getElementById('currentPlayer').textContent = name;
+            }
+        }
+
+        // =================== ЗАПУСК ===================
+        initSkin();
+        gameLoop();
+        window.addEventListener('keydown', (e) => keys[e.key] = true);
+        window.addEventListener('keyup', (e) => keys[e.key] = false);
+    </script>
+</body>
+</html>
